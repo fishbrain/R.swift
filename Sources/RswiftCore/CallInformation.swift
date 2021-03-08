@@ -19,12 +19,17 @@ public struct CallInformation {
   let accessLevel: AccessLevel
   let imports: [Module]
 
-  let xcodeprojURL: URL
+  let xcodeprojURL: URL?
+  let packageURL: URL?
   let targetName: String
   let bundleIdentifier: String
   let productModuleName: String
   let infoPlistFile: URL
   let codeSignEntitlements: URL?
+
+  var isSwiftPackage: Bool {
+    xcodeprojURL != nil ? false : (packageURL != nil)
+  }
 
   let scriptInputFiles: [String]
   let scriptOutputFiles: [String]
@@ -45,7 +50,8 @@ public struct CallInformation {
     accessLevel: AccessLevel,
     imports: [Module],
 
-    xcodeprojURL: URL,
+    xcodeprojURL: URL?,
+    packageURL: URL?,
     targetName: String,
     bundleIdentifier: String,
     productModuleName: String,
@@ -71,6 +77,7 @@ public struct CallInformation {
     self.generators = generators
 
     self.xcodeprojURL = xcodeprojURL
+    self.packageURL = packageURL
     self.targetName = targetName
     self.bundleIdentifier = bundleIdentifier
     self.productModuleName = productModuleName

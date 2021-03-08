@@ -20,6 +20,33 @@
         }
       },
       {
+        "package": "llbuild",
+        "repositoryURL": "https://github.com/apple/swift-llbuild.git",
+        "state": {
+          "branch": "release/5.3",
+          "revision": "ef2e9ba657fd0a4e6e25fff05051b328bf27aeaf",
+          "version": null
+        }
+      },
+      {
+        "package": "SwiftPM",
+        "repositoryURL": "https://github.com/apple/swift-package-manager",
+        "state": {
+          "branch": "release/5.3",
+          "revision": "06d96d033ffdcbf97b741ed79d62127c4fe419b3",
+          "version": null
+        }
+      },
+      {
+        "package": "swift-tools-support-core",
+        "repositoryURL": "https://github.com/apple/swift-tools-support-core.git",
+        "state": {
+          "branch": "release/5.3",
+          "revision": "8c3dfd42a36d0416345143eae4567d9314c12246",
+          "version": null
+        }
+      },
+      {
         "package": "XcodeEdit",
         "repositoryURL": "https://github.com/tomlokhorst/XcodeEdit",
         "state": {

@@ -49,7 +49,8 @@ struct EnvironmentKeys {
   static let xcodeproj = "PROJECT_FILE_PATH"
   static let infoPlistFile = "INFOPLIST_FILE"
   static let codeSignEntitlements = "CODE_SIGN_ENTITLEMENTS"
-
+  static let swiftPackage = "SWIFT_PACKAGE"
+    
   static let buildProductsDir = SourceTreeFolder.buildProductsDir.rawValue
   static let developerDir = SourceTreeFolder.developerDir.rawValue
   static let platformDir = SourceTreeFolder.platformDir.rawValue
@@ -72,7 +73,7 @@ struct CommanderOptions {
   static let importModules = Option("import", default: "", description: "Add extra modules as import in the generated file, comma seperated")
   static let accessLevel = Option("accessLevel", default: AccessLevel.internalLevel, description: "The access level [public|internal] to use for the generated R-file")
   static let rswiftIgnore = Option("rswiftignore", default: ".rswiftignore", description: "Path to pattern file that describes files that should be ignored")
-  static let inputOutputFilesValidation = Flag("input-output-files-validation", default: true, flag: nil, disabledName: "disable-input-output-files-validation", disabledFlag: nil, description: "Validate input and output files configured in a build phase")
+  static let inputOutputFilesValidation = Flag("input-output-files-validation", default: false, flag: nil, disabledName: "disable-input-output-files-validation", disabledFlag: nil, description: "Validate input and output files configured in a build phase")
 }
 
 // Options grouped in struct for readability
@@ -113,31 +114,43 @@ let generate = command(
   let processInfo = ProcessInfo()
 
   // Touch last run file
-  do {
-    let tempDirPath = try ProcessInfo().environmentVariable(name: EnvironmentKeys.tempDir)
-    let lastRunFile = URL(fileURLWithPath: tempDirPath).appendingPathComponent(Rswift.lastRunFile)
-    try Date().description.write(to: lastRunFile, atomically: true, encoding: .utf8)
-  } catch {
-    warn("Failed to write out to '\(Rswift.lastRunFile)', this might cause Xcode to not run the R.swift build phase: \(error)")
+//  do {
+//    let tempDirPath = try ProcessInfo().environmentVariable(name: EnvironmentKeys.tempDir)
+//    let lastRunFile = URL(fileURLWithPath: tempDirPath).appendingPathComponent(Rswift.lastRunFile)
+//    try Date().description.write(to: lastRunFile, atomically: true, encoding: .utf8)
+//  } catch {
+//    warn("Failed to write out to '\(Rswift.lastRunFile)', this might cause Xcode to not run the R.swift build phase: \(error)")
+//  }
+
+  var isSwiftPackage: Bool
+  
+  var xcodeprojPath: String!
+  var packagePath: String!
+  
+  if let path = try? processInfo.environmentVariable(name: EnvironmentKeys.xcodeproj) {
+    (xcodeprojPath, isSwiftPackage) = (path, false)
+  } else if let path = try? processInfo.environmentVariable(name: EnvironmentKeys.swiftPackage) {
+    (packagePath, isSwiftPackage) = (path, true)
+  } else {
+     throw ArgumentError.missingValue(argument: "xcodeproj OR package")
   }
 
-  let xcodeprojPath = try processInfo.environmentVariable(name: EnvironmentKeys.xcodeproj)
   let targetName = try processInfo.environmentVariable(name: EnvironmentKeys.target)
-  let bundleIdentifier = try processInfo.environmentVariable(name: EnvironmentKeys.bundleIdentifier)
-  let productModuleName = try processInfo.environmentVariable(name: EnvironmentKeys.productModuleName)
-  let infoPlistFile = try processInfo.environmentVariable(name: EnvironmentKeys.infoPlistFile)
+  let bundleIdentifier = try? processInfo.environmentVariable(name: EnvironmentKeys.bundleIdentifier)
+  let productModuleName = try? processInfo.environmentVariable(name: EnvironmentKeys.productModuleName)
+  let infoPlistFile = try? processInfo.environmentVariable(name: EnvironmentKeys.infoPlistFile)
   let codeSignEntitlements = processInfo.environment[EnvironmentKeys.codeSignEntitlements]
 
-  let buildProductsDirPath = try processInfo.environmentVariable(name: EnvironmentKeys.buildProductsDir)
-  let developerDirPath = try processInfo.environmentVariable(name: EnvironmentKeys.developerDir)
-  let sourceRootPath = try processInfo.environmentVariable(name: EnvironmentKeys.sourceRoot)
-  let sdkRootPath = try processInfo.environmentVariable(name: EnvironmentKeys.sdkRoot)
-  let tempDir = try processInfo.environmentVariable(name: EnvironmentKeys.tempDir)
-  let platformPath = try processInfo.environmentVariable(name: EnvironmentKeys.platformDir)
+  let buildProductsDirPath = try? processInfo.environmentVariable(name: EnvironmentKeys.buildProductsDir)
+  let developerDirPath = try? processInfo.environmentVariable(name: EnvironmentKeys.developerDir)
+  let sourceRootPath = try? processInfo.environmentVariable(name: EnvironmentKeys.sourceRoot)
+  let sdkRootPath = try? processInfo.environmentVariable(name: EnvironmentKeys.sdkRoot)
+  let tempDir = try? processInfo.environmentVariable(name: EnvironmentKeys.tempDir)
+  let platformPath = try? processInfo.environmentVariable(name: EnvironmentKeys.platformDir)
 
   let outputURL = URL(fileURLWithPath: outputPath)
   let uiTestOutputURL = uiTestOutputPath.count > 0 ? URL(fileURLWithPath: uiTestOutputPath) : nil
-  let rswiftIgnoreURL = URL(fileURLWithPath: sourceRootPath).appendingPathComponent(rswiftIgnore, isDirectory: false)
+  let rswiftIgnoreURL = URL(fileURLWithPath: sourceRootPath ?? "").appendingPathComponent(rswiftIgnore, isDirectory: false)
 
   let (knownGenerators, unknownGenerators) = parseGenerators(generatorNames)
   if !unknownGenerators.isEmpty {
@@ -154,19 +167,19 @@ let generate = command(
     .filter { !$0.isEmpty }
     .map { Module.custom(name: $0) }
 
-  let lastRunURL = URL(fileURLWithPath: tempDir).appendingPathComponent(Rswift.lastRunFile)
+  let lastRunURL = URL(fileURLWithPath: tempDir ?? "").appendingPathComponent(Rswift.lastRunFile)
 
-  let scriptInputFileCountString = try processInfo.environmentVariable(name: EnvironmentKeys.scriptInputFileCount)
-  guard let scriptInputFileCount = Int(scriptInputFileCountString) else {
-    throw ArgumentError.invalidType(value: scriptInputFileCountString, type: "Int", argument: EnvironmentKeys.scriptInputFileCount)
+  let scriptInputFileCountString = try? processInfo.environmentVariable(name: EnvironmentKeys.scriptInputFileCount)
+  guard let scriptInputFileCount = Int(scriptInputFileCountString ?? "0") else {
+    throw ArgumentError.invalidType(value: scriptInputFileCountString ?? "", type: "Int", argument: EnvironmentKeys.scriptInputFileCount)
   }
   let scriptInputFiles = try (0..<scriptInputFileCount)
     .map(EnvironmentKeys.scriptInputFile)
     .map(processInfo.environmentVariable)
 
-  let scriptOutputFileCountString = try processInfo.environmentVariable(name: EnvironmentKeys.scriptOutputFileCount)
-  guard let scriptOutputFileCount = Int(scriptOutputFileCountString) else {
-    throw ArgumentError.invalidType(value: scriptOutputFileCountString, type: "Int", argument: EnvironmentKeys.scriptOutputFileCount)
+  let scriptOutputFileCountString = try? processInfo.environmentVariable(name: EnvironmentKeys.scriptOutputFileCount)
+  guard let scriptOutputFileCount = Int(scriptOutputFileCountString ?? "0") else {
+    throw ArgumentError.invalidType(value: scriptOutputFileCountString ?? "", type: "Int", argument: EnvironmentKeys.scriptOutputFileCount)
   }
   let scriptOutputFiles = try (0..<scriptOutputFileCount)
     .map(EnvironmentKeys.scriptOutputFile)
@@ -177,7 +190,7 @@ let generate = command(
     let errors = validateRswiftEnvironment(
       outputURL: outputURL,
       uiTestOutputURL: uiTestOutputURL,
-      sourceRootPath: sourceRootPath,
+      sourceRootPath: sourceRootPath ?? "",
       scriptInputFiles: scriptInputFiles,
       scriptOutputFiles: scriptOutputFiles,
       lastRunURL: lastRunURL,
@@ -203,22 +216,23 @@ let generate = command(
     accessLevel: accessLevel,
     imports: modules,
 
-    xcodeprojURL: URL(fileURLWithPath: xcodeprojPath),
+    xcodeprojURL: isSwiftPackage ? nil : URL(fileURLWithPath: xcodeprojPath),
+    packageURL: isSwiftPackage ? URL(fileURLWithPath: packagePath) : nil,
     targetName: targetName,
-    bundleIdentifier: bundleIdentifier,
-    productModuleName: productModuleName,
-    infoPlistFile: URL(fileURLWithPath: infoPlistFile),
+    bundleIdentifier: bundleIdentifier ?? "",
+    productModuleName: productModuleName ?? "",
+    infoPlistFile: URL(fileURLWithPath: infoPlistFile ?? ""),
     codeSignEntitlements: codeSignEntitlements.map { URL(fileURLWithPath: $0) },
 
     scriptInputFiles: scriptInputFiles,
     scriptOutputFiles: scriptOutputFiles,
     lastRunURL: lastRunURL,
 
-    buildProductsDirURL: URL(fileURLWithPath: buildProductsDirPath),
-    developerDirURL: URL(fileURLWithPath: developerDirPath),
-    sourceRootURL: URL(fileURLWithPath: sourceRootPath),
-    sdkRootURL: URL(fileURLWithPath: sdkRootPath),
-    platformURL: URL(fileURLWithPath: platformPath)
+    buildProductsDirURL: URL(fileURLWithPath: buildProductsDirPath ?? ""),
+    developerDirURL: URL(fileURLWithPath: developerDirPath ?? ""),
+    sourceRootURL: URL(fileURLWithPath: sourceRootPath ?? ""),
+    sdkRootURL: URL(fileURLWithPath: sdkRootPath ?? ""),
+    platformURL: URL(fileURLWithPath: platformPath ?? "")
   )
 
   try RswiftCore(callInformation).run()
