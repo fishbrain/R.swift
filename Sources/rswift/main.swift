@@ -78,7 +78,18 @@ struct CommanderOptions {
 
 // Options grouped in struct for readability
 struct CommanderArguments {
-  static let outputPath = Argument<String>("outputPath", description: "Output path for the generated file")
+  static let outputPath = Argument<String>(
+    "outputPath",
+    description: "Output path for the generated file"
+  )
+  static let inputSPMPackagePath = Argument<String>(
+    "inputSPMPackagePath",
+    description: "Path of the SPM package you would like to generate resource file from."
+  )
+  static let inputSPMPackageName = Argument<String>(
+    "inputSPMPackageName",
+    description: "Name of the SPM package you would like to generate resource file from."
+  )
 }
 
 func parseGenerators(_ string: String) -> ([RswiftGenerator], [String]) {
@@ -107,9 +118,10 @@ let generate = command(
   CommanderOptions.accessLevel,
   CommanderOptions.rswiftIgnore,
   CommanderOptions.inputOutputFilesValidation,
-
+  CommanderArguments.inputSPMPackagePath,
+  CommanderArguments.inputSPMPackageName,
   CommanderArguments.outputPath
-) { generatorNames, uiTestOutputPath, importModules, accessLevel, rswiftIgnore, inputOutputFilesValidation, outputPath in
+) { generatorNames, uiTestOutputPath, importModules, accessLevel, rswiftIgnore, inputOutputFilesValidation, inputSPMPackagePath, inputSPMPackageName, outputPath in
 
   let processInfo = ProcessInfo()
 
@@ -131,11 +143,13 @@ let generate = command(
     (xcodeprojPath, isSwiftPackage) = (path, false)
   } else if let path = try? processInfo.environmentVariable(name: EnvironmentKeys.swiftPackage) {
     (packagePath, isSwiftPackage) = (path, true)
+  } else if !inputSPMPackagePath.isEmpty {
+    (packagePath, isSwiftPackage) = (inputSPMPackagePath, true)
   } else {
-     throw ArgumentError.missingValue(argument: "xcodeproj OR package")
+    throw ArgumentError.missingValue(argument: "xcodeproj OR package")
   }
 
-  let targetName = try processInfo.environmentVariable(name: EnvironmentKeys.target)
+  let targetName = (try? processInfo.environmentVariable(name: EnvironmentKeys.target)) ?? inputSPMPackageName
   let bundleIdentifier = try? processInfo.environmentVariable(name: EnvironmentKeys.bundleIdentifier)
   let productModuleName = try? processInfo.environmentVariable(name: EnvironmentKeys.productModuleName)
   let infoPlistFile = try? processInfo.environmentVariable(name: EnvironmentKeys.infoPlistFile)
