@@ -22,7 +22,7 @@ struct Resources {
   let storyboards: [Storyboard]
   let resourceFiles: [ResourceFile]
   let localizableStrings: [LocalizableStrings]
-    
+
   let reusables: [Reusable]
 
   init(resourceURLs: [URL], fileManager: FileManager) {
@@ -52,7 +52,19 @@ struct Resources {
 
       // All previous assets can also possibly be used as files
       if let resourceFile = tryResourceParsing({ try ResourceFile(url: url) }) {
-        resourceFiles.append(resourceFile)
+        var isDirectory = ObjCBool(false)
+        _ = fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory)
+
+        if isDirectory.boolValue {
+          let files = filesUnderDirectory(url, fileManager: fileManager)
+          files.forEach { url in
+            if let resourceFile = tryResourceParsing({ try ResourceFile(url: url) }) {
+              resourceFiles.append(resourceFile)
+            }
+          }
+        } else {
+          resourceFiles.append(resourceFile)
+        }
       }
     }
     
@@ -67,6 +79,26 @@ struct Resources {
     reusables = (nibs.map { $0 as ReusableContainer } + storyboards.map { $0 as ReusableContainer })
       .flatMap { $0.reusables }
   }
+}
+
+private func filesUnderDirectory(_ directory: URL, fileManager: FileManager) -> [URL] {
+  var files = [URL]()
+  if let enumerator = fileManager.enumerator(
+      at: directory,
+      includingPropertiesForKeys: [.isRegularFileKey],
+      options: [.skipsHiddenFiles, .skipsPackageDescendants])
+  {
+    for case let fileURL as URL in enumerator {
+      do {
+        let fileAttributes = try fileURL.resourceValues(forKeys: [.isRegularFileKey])
+        if fileAttributes.isRegularFile! {
+          files.append(fileURL)
+        }
+      } catch { print(error, fileURL) }
+    }
+    print(files)
+  }
+  return files
 }
 
 private func tryResourceParsing<T>(_ parse: () throws -> T) -> T? {
