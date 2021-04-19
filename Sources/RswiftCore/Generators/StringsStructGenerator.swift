@@ -213,6 +213,7 @@ struct StringsStructGenerator: ExternalOnlyStructGenerator {
       .map { $0.0 }
       .compactMap { $0.localeDescription }
       .map { "\"\($0)\"" }
+      .sorted()
       .joined(separator: ", ")
 
     return Let(
@@ -381,7 +382,7 @@ private struct StringValues {
         results.append("")
       }
 
-      let locales = values.compactMap { $0.0.localeDescription }
+      let locales = values.compactMap { $0.0.localeDescription }.sorted()
       results.append("Locales: \(locales.joined(separator: ", "))")
     }
 
