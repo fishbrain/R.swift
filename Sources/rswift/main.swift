@@ -45,7 +45,7 @@ struct EnvironmentKeys {
   static let scriptInputFileCount = "SCRIPT_INPUT_FILE_COUNT"
   static let scriptOutputFileCount = "SCRIPT_OUTPUT_FILE_COUNT"
   static let target = "TARGET_NAME"
-  static let tempDir = "TEMP_DIR"
+  static let tempDir = "TMPDIR"
   static let xcodeproj = "PROJECT_FILE_PATH"
   static let infoPlistFile = "INFOPLIST_FILE"
   static let codeSignEntitlements = "CODE_SIGN_ENTITLEMENTS"
