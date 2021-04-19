@@ -18,7 +18,7 @@ extension Struct {
         isStatic: true,
         name: "hostingBundle",
         typeDefinition: .inferred(Type._Bundle),
-        value: "Bundle(for: R.Class.self)"),
+        value: "Bundle.module"),
       Let(
         comments: [],
         accessModifier: .filePrivate,
